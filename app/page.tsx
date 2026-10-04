@@ -1,69 +1,227 @@
-import Image from "next/image";
+'use client';
+import { useState, useEffect } from 'react';
+import Link from "next/link";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css'; 
+import '@/app/styles/Home.css'
+import PayButton from '@/components/PayButton';
+import { schema } from '@/app/lib/schema';
+import { z } from 'zod';
+import type { ChangeEvent } from 'react';
+
+const STATES = [
+  "Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno",
+  "Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT (Abuja)","Gombe",
+  "Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos",
+  "Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto",
+  "Taraba","Yobe","Zamfara"
+];
+
+type NigerianStateSelectProps = {
+  value: any;
+  onChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+};
+
+type FormData = z.infer<typeof schema>;
+
+const StateSelect = ({ value, onChange }: NigerianStateSelectProps) => (
+  <select value={value} onChange={onChange}>
+    <option value="">— Select State —</option>
+    {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+  </select>
+);
 
 export default function Home() {
+  const [booking, setBooking] = useState<string[]>([]);
+  const [showError, setShowError] = useState(false);
+  const [validatedData, setValidatedData] = useState<any>(null);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      intentionInfo: "",
+      intention: "",
+      amount: 0,
+      origin: "",
+      phoneNo: "",
+      partnerFirstName: "",
+      partnerLastName: "",
+      partnerOrigin: ""
+    },
+  });
+
+  const selectedIntention = watch("intention");
+  const phoneNoValue = watch("phoneNo");
+  const originValue = watch("origin");
+  const partnerOriginValue = watch("partnerOrigin");
+  const amountValue = watch("amount");
+
+  useEffect(() => {
+    if (typeof selectedIntention === 'string' && ["Child Presentation", "Wedding Mass", "Requiem Mass", "Baptism"].includes(selectedIntention)) {
+      setValue("intentionInfo", selectedIntention);
+    }
+  }, [selectedIntention, setValue]);
+
+  const addDate = (val: string) => {
+    if (!booking.includes(val)) {
+      const updatedBookings = [...booking, val];
+      setBooking(updatedBookings);
+      setValue("amount", updatedBookings.length * 100);
+    }
+  };
+
+  const removeDate = (index: number) => {
+    const updatedBookings = booking.filter((_, i) => i !== index);
+    setBooking(updatedBookings);
+    setValue("amount", updatedBookings.length * 100);
+  };
+
+  const handleFormValidationSuccess = (data: FormData) => {
+    setValidatedData({ ...data, _triggerType: 'preverify' });
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <form className="container" onSubmit={(e) => e.preventDefault()}>
+      <div className="inner-wrap">
+
+        <h1 className="home-title">Mass Booking</h1>
+        <div className="gold-divider" />
+        <p className="home-subtitle">St. Ferdinand Parish</p>
+
+        <div className="field-group">
+          <label>First Name</label>
+          <input type="text" placeholder="Enter your first name" {...register("firstName")} />
+          {errors.firstName && <p style={{ color: 'red' }}>{errors.firstName.message}</p>}
+        </div>
+
+        <div className="field-group">
+          <label>Last Name</label>
+          <input type="text" placeholder="Enter your last name" {...register("lastName")} />
+          {errors.lastName && <p style={{ color: 'red' }}>{errors.lastName.message}</p>}
+        </div>
+
+        <div className="field-group">
+          <label>Intention</label>
+          <select {...register("intention")}>
+            <option value="">— Select an Intention —</option>
+            <option value="Thanksgiving">Thanksgiving (Processing to the Altar)</option>
+            <option value="Mass Intention">Mass Intention (Not Processing to Altar)</option>
+            <option value="Child Presentation">Child Presentation</option>
+            <option value="Wedding Mass">Wedding Mass</option>
+            <option value="Requiem Mass">Requiem Mass</option>
+            <option value="Baptism">Baptism</option>
+          </select>
+          {errors.intention && <p style={{ color: 'red' }}>{errors.intention.message}</p>}
+        </div>
+
+        {selectedIntention === "Thanksgiving" && (
+          <div className="field-group">
+            <label>Thanking God For</label>
+            <input type="text" placeholder="What are you thanking God for?" {...register("intentionInfo")} />
+            {errors.intentionInfo && <p style={{ color: 'red' }}>{errors.intentionInfo.message}</p>}
+          </div>
+        )}
+
+        {selectedIntention === "Mass Intention" && (
+          <div className="field-group">
+            <label>Dedication</label>
+            <input type="text" placeholder="What are you dedicating this Mass for?" {...register("intentionInfo")} />
+            {errors.intentionInfo && <p style={{ color: 'red' }}>{errors.intentionInfo.message}</p>}
+          </div>
+        )}
+
+        {selectedIntention === "Wedding Mass" && (
+          <>
+            <p className="section-label">Partner Details</p>
+
+            <div className="field-group">
+              <label>Partner's First Name</label>
+              <input type="text" placeholder="Partner's first name" {...register("partnerFirstName")} />
+              {errors.partnerFirstName && <p style={{ color: 'red' }}>{errors.partnerFirstName.message}</p>}
+            </div>
+
+            <div className="field-group">
+              <label>Partner's Last Name</label>
+              <input type="text" placeholder="Partner's last name" {...register("partnerLastName")} />
+              {errors.partnerLastName && <p style={{ color: 'red' }}>{errors.partnerLastName.message}</p>}
+            </div>
+
+            <div className="field-group">
+              <label>Your State of Origin</label>
+              <StateSelect 
+                value={originValue || ""} 
+                onChange={(e) => setValue("origin", e.target.value, { shouldValidate: true })} 
+              />
+              {errors.origin && <p style={{ color: 'red' }}>{errors.origin.message}</p>}
+            </div>
+
+            <div className="field-group">
+              <label>Partner's State of Origin</label>
+              <StateSelect 
+                value={String(partnerOriginValue ?? "")} 
+                onChange={(e) => setValue("partnerOrigin", e.target.value, { shouldValidate: true })} 
+              />
+              {errors.partnerOrigin && <p style={{ color: 'red' }}>{errors.partnerOrigin.message}</p>}
+            </div>
+          </>
+        )}
+
+        <div className="field-group">
+          <label>Phone Number</label>
+           <input type="text" placeholder="We'll use this to keep in touch" {...register("phoneNo")} />
+          
+          {errors.phoneNo && <p style={{ color: 'red' }}>{errors.phoneNo.message}</p>}
+        </div>
+
+        <div className="field-group">
+          <label>Select Date(s)</label>
+          <input
+            type="date"
+            onChange={(e) => {
+              if (new Date(e.target.value) > new Date()) {
+                addDate(e.target.value);
+                setShowError(false);
+              } else {
+                setShowError(true);
+              }
+            }}
+          />
+        </div>
+        {showError && <p style={{ color: 'red' }}>You cannot select a date that has passed</p>}
+
+        {booking.length > 0 && (
+          <ul className="booking-list">
+            {booking.map((book: string, index: number) => (
+              <li key={index}>
+                <span>{book}</span>
+                <button type="button" onClick={() => removeDate(index)}>Remove</button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <PayButton
+          amount={Number(amountValue)}
+          booking={booking}
+          validatedFormData={validatedData}
+          onTriggerSubmit={handleSubmit(handleFormValidationSuccess)} 
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        <Link href="/login" className="admin-link">
+          Are you the Parish Admin?
+        </Link>
+
+      </div>
+    </form>
   );
 }
